@@ -7,13 +7,22 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { GamesService } from './games.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
-import { createGameSchema, updateGameSchema } from './dto/games.schema.dto';
-import type { CreateGameDto, UpdateGameDto } from './dto/games.schema.dto';
+import {
+  createGameSchema,
+  findGamesQuerySchema,
+  updateGameSchema,
+} from './dto/games.schema.dto';
+import type {
+  CreateGameDto,
+  FindGamesQuery,
+  UpdateGameDto,
+} from './dto/games.schema.dto';
 
 @Controller('games')
 @UseGuards(JwtAuthGuard)
@@ -26,8 +35,15 @@ export class GamesController {
   }
 
   @Get()
-  findAll() {
-    return this.gamesService.findAll();
+  findAll(
+    @Query(new ZodValidationPipe(findGamesQuerySchema)) query: FindGamesQuery,
+  ) {
+    return this.gamesService.findAll(query);
+  }
+
+  @Get('platforms')
+  findPlatforms() {
+    return this.gamesService.findPlatforms();
   }
 
   @Get(':id')

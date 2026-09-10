@@ -12,3 +12,12 @@ export const updateGameSchema = createGameSchema.partial();
 
 export type CreateGameDto = z.infer<typeof createGameSchema>;
 export type UpdateGameDto = z.infer<typeof updateGameSchema>;
+
+export const findGamesQuerySchema = z.object({
+  search: z.string().optional(),
+  platform: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(12),
+});
+
+export type FindGamesQuery = z.infer<typeof findGamesQuerySchema>;

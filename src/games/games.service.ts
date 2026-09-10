@@ -2,8 +2,12 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DrizzleAsyncProvider } from 'src/db/drizzle.provider';
 import * as schema from '../db/schema';
-import { eq } from 'drizzle-orm';
-import { CreateGameDto, UpdateGameDto } from './dto/games.schema.dto';
+import { and, count, eq, ilike, SQL } from 'drizzle-orm';
+import {
+  CreateGameDto,
+  FindGamesQuery,
+  UpdateGameDto,
+} from './dto/games.schema.dto';
 
 @Injectable()
 export class GamesService {
@@ -17,8 +21,39 @@ export class GamesService {
     return result[0];
   }
 
-  async findAll() {
-    return this.db.select().from(schema.games);
+  async findAll(query: FindGamesQuery) {
+    const { search, platform, page, limit } = query;
+    const offset = (page - 1) * limit;
+
+    const conditions: SQL[] = [];
+    if (search) conditions.push(ilike(schema.games.title, `%${search}%`));
+    if (platform) conditions.push(eq(schema.games.platform, platform));
+
+    const whereClause = conditions.length ? and(...conditions) : undefined;
+
+    const [data, [{ total }]] = await Promise.all([
+      this.db
+        .select()
+        .from(schema.games)
+        .where(whereClause)
+        .limit(limit)
+        .offset(offset),
+      this.db.select({ total: count() }).from(schema.games).where(whereClause),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findPlatforms() {
+    const result = await this.db
+      .selectDistinct({ platform: schema.games.platform })
+      .from(schema.games);
+    return result.map((r) => r.platform).filter(Boolean);
   }
 
   async findOne(id: string) {
