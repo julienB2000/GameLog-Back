@@ -9,11 +9,15 @@ import {
   UpdateGameDto,
 } from './dto/games.schema.dto';
 
+import { RedisAsyncProvider } from '../redis/redis.provider';
+import Redis from 'ioredis';
+
 @Injectable()
 export class GamesService {
   constructor(
     @Inject(DrizzleAsyncProvider)
     private readonly db: NodePgDatabase<typeof schema>,
+    @Inject(RedisAsyncProvider) private readonly redis: Redis,
   ) {}
 
   async create(data: CreateGameDto) {
@@ -24,6 +28,10 @@ export class GamesService {
   async findAll(query: FindGamesQuery) {
     const { search, platform, page, limit } = query;
     const offset = (page - 1) * limit;
+
+    const cacheKey = `games:list:${query.search ?? ''}:${query.platform ?? ''}:${query.page}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
 
     const conditions: SQL[] = [];
     if (search) conditions.push(ilike(schema.games.title, `%${search}%`));
@@ -40,13 +48,14 @@ export class GamesService {
         .offset(offset),
       this.db.select({ total: count() }).from(schema.games).where(whereClause),
     ]);
-
-    return {
+    const response = {
       data,
       total,
       page,
       totalPages: Math.ceil(total / limit),
     };
+    await this.redis.set(cacheKey, JSON.stringify(response), 'EX', 3600); // 1h
+    return response;
   }
 
   async findPlatforms() {
