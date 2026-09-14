@@ -2,7 +2,17 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DrizzleAsyncProvider } from 'src/db/drizzle.provider';
 import * as schema from '../db/schema';
-import { and, count, eq, ilike, SQL } from 'drizzle-orm';
+import {
+  and,
+  arrayContains,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  sql,
+  SQL,
+} from 'drizzle-orm';
 import {
   CreateGameDto,
   FindGamesQuery,
@@ -26,35 +36,45 @@ export class GamesService {
   }
 
   async findAll(query: FindGamesQuery) {
-    const { search, platform, page, limit } = query;
-    const offset = (page - 1) * limit;
+    const { search, platform, genre, sortBy, page, limit } = query;
+    const cacheKey = `games:list:${search ?? ''}:${platform ?? ''}:${genre ?? ''}:${sortBy}:${page}`;
 
-    const cacheKey = `games:list:${query.search ?? ''}:${query.platform ?? ''}:${query.page}`;
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
+    const offset = (page - 1) * limit;
     const conditions: SQL[] = [];
     if (search) conditions.push(ilike(schema.games.title, `%${search}%`));
     if (platform) conditions.push(eq(schema.games.platform, platform));
+    if (genre) conditions.push(arrayContains(schema.games.genres, [genre]));
 
     const whereClause = conditions.length ? and(...conditions) : undefined;
+
+    const orderByClause =
+      sortBy === 'rating'
+        ? desc(schema.games.metacriticRating)
+        : sortBy === 'title'
+          ? asc(schema.games.title)
+          : desc(schema.games.popularity);
 
     const [data, [{ total }]] = await Promise.all([
       this.db
         .select()
         .from(schema.games)
         .where(whereClause)
+        .orderBy(orderByClause)
         .limit(limit)
         .offset(offset),
       this.db.select({ total: count() }).from(schema.games).where(whereClause),
     ]);
+
     const response = {
       data,
       total,
       page,
       totalPages: Math.ceil(total / limit),
     };
-    await this.redis.set(cacheKey, JSON.stringify(response), 'EX', 3600); // 1h
+    await this.redis.set(cacheKey, JSON.stringify(response), 'EX', 3600);
     return response;
   }
 
@@ -98,5 +118,11 @@ export class GamesService {
       .where(eq(schema.games.id, id))
       .returning();
     return result[0];
+  }
+  async findGenres() {
+    const result = await this.db.execute<{ genre: string }>(
+      sql`SELECT DISTINCT unnest(genres) as genre FROM games ORDER BY genre`,
+    );
+    return result.rows.map((r) => r.genre);
   }
 }

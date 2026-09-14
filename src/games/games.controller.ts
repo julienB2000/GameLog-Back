@@ -45,6 +45,11 @@ export class GamesController {
   findPlatforms() {
     return this.gamesService.findPlatforms();
   }
+  @Get('genres')
+  findGenres() {
+    console.log('je rentre');
+    return this.gamesService.findGenres();
+  }
 
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {

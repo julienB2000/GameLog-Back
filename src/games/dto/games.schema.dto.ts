@@ -16,6 +16,8 @@ export type UpdateGameDto = z.infer<typeof updateGameSchema>;
 export const findGamesQuerySchema = z.object({
   search: z.string().optional(),
   platform: z.string().optional(),
+  genre: z.string().optional(),
+  sortBy: z.enum(['popularity', 'rating', 'title']).default('popularity'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(12),
 });
