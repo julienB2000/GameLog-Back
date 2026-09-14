@@ -1,12 +1,20 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const drizzle_kit_1 = require("drizzle-kit");
-exports.default = (0, drizzle_kit_1.defineConfig)({
-    dialect: 'postgresql',
-    schema: './src/db/schema.ts',
-    out: './drizzle',
-    dbCredentials: {
-        url: 'postgresql://gamelog:gamelog@localhost:5433/gamelog',
-    },
+import { defineConfig } from 'drizzle-kit';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
+const databaseUrl = process.env.DATABASE_URL;
+console.log('🔍 DATABASE_URL utilisée par drizzle-kit:', databaseUrl);
+
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is not defined');
+}
+
+export default defineConfig({
+  dialect: 'postgresql',
+  schema: './src/db/schema.ts',
+  out: './drizzle',
+  dbCredentials: {
+    url: databaseUrl,
+  },
 });
-//# sourceMappingURL=drizzle.config.js.map
