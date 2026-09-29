@@ -28,12 +28,6 @@ import type {
 @UseGuards(JwtAuthGuard)
 export class GamesController {
   constructor(private readonly gamesService: GamesService) {}
-
-  @Post()
-  create(@Body(new ZodValidationPipe(createGameSchema)) body: CreateGameDto) {
-    return this.gamesService.create(body);
-  }
-
   @Get()
   findAll(
     @Query(new ZodValidationPipe(findGamesQuerySchema)) query: FindGamesQuery,
@@ -54,18 +48,5 @@ export class GamesController {
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.gamesService.findOne(id);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(updateGameSchema)) body: UpdateGameDto,
-  ) {
-    return this.gamesService.update(id, body);
-  }
-
-  @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.gamesService.remove(id);
   }
 }
