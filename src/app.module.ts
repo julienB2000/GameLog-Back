@@ -9,19 +9,22 @@ import { AuthModule } from './auth/auth.module';
 import { GamesModule } from './games/games.module';
 import { LibraryModule } from './library/library.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ScheduleModule  .forRoot(),
+    ScheduleModule.forRoot(),
     DrizzleModule,
     RedisModule,
     UsersModule,
     AuthModule,
     GamesModule,
     LibraryModule,
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
